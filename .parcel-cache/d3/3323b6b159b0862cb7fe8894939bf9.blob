@@ -1,0 +1,240 @@
+"use strict";
+
+var _icons = _interopRequireDefault(require("url:../img/icons.svg"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+console.log(_icons.default);
+const recipeContainer = document.querySelector('.recipe');
+const search__field = document.querySelector('.search__field');
+const Search__btn = document.querySelector('.search__btn');
+const results = document.querySelector('.results');
+const pagination = document.querySelector('.pagination');
+
+const timeout = function (s) {
+  return new Promise(function (_, reject) {
+    setTimeout(function () {
+      reject(new Error(`Request took too long! Timeout after ${s} second`));
+    }, s * 1000);
+  });
+}; // https://forkify-api.herokuapp.com/v2
+///////////////////////////////////////
+
+
+const renderSpinner = function (parentEl) {
+  const html = `<div class="spinner">
+  <svg>
+    <use href="${_icons.default}#icon-loader"></use>
+  </svg>
+</div>`;
+  parentEl.insertAdjacentHTML('afterbegin', html);
+};
+
+async function getrecipe() {
+  const idRecipe = window.location.hash.slice(1);
+  if (!idRecipe) return;
+  renderSpinner(recipeContainer);
+  const x = await fetch(`https://forkify-api.herokuapp.com/api/v2/recipes/${idRecipe}`);
+  const data = await x.json();
+  const recipe = data.data.recipe;
+  console.log(recipe);
+  const html = `<figure class="recipe__fig">
+<img src="${recipe.image_url}" alt="Tomato" class="recipe__img" />
+<h1 class="recipe__title">
+  <span>${recipe.title}</span>
+</h1>
+</figure>
+
+<div class="recipe__details">
+<div class="recipe__info">
+  <svg class="recipe__info-icon">
+    <use href="${_icons.default}#icon-clock"></use>
+  </svg>
+  <span class="recipe_info-data recipe_info-data--minutes">${recipe.cooking_time}</span>
+  <span class="recipe__info-text">minutes</span>
+</div>
+<div class="recipe__info">
+  <svg class="recipe__info-icon">
+    <use href="${_icons.default}#icon-users"></use>
+  </svg>
+  <span class="recipe_info-data recipe_info-data--people">${recipe.servings}</span>
+  <span class="recipe__info-text">servings</span>
+
+  <div class="recipe__info-buttons">
+    <button class="btn--tiny btn--increase-servings">
+      <svg>
+        <use href="${_icons.default}#icon-minus-circle"></use>
+      </svg>
+    </button>
+    <button class="btn--tiny btn--increase-servings">
+      <svg>
+        <use href="${_icons.default}#icon-plus-circle"></use>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<div class="recipe__user-generated">
+  <svg>
+    <use href="${_icons.default}#icon-user"></use>
+  </svg>
+</div>
+<button class="btn--round">
+  <svg class="">
+    <use href="${_icons.default}#icon-bookmark-fill"></use>
+  </svg>
+</button>
+</div>
+
+<div class="recipe__ingredients">
+<h2 class="heading--2">Recipe ingredients</h2>
+<ul class="recipe__ingredient-list">
+${recipe.ingredients.map(ing => {
+    return `<li class="recipe__ingredient">
+<svg class="recipe__icon">
+  <use href="${_icons.default}#icon-check"></use>
+</svg>
+<div class="recipe__quantity">${ing.quantity}</div>
+<div class="recipe__description">
+  <span class="recipe__unit">${ing.unit}</span>
+  ${ing.description}
+</div>
+</li>`;
+  }).join('')}
+ 
+
+</ul>
+</div>
+
+<div class="recipe__directions">
+<h2 class="heading--2">How to cook it</h2>
+<p class="recipe__directions-text">
+  This recipe was carefully designed and tested by
+  <span class="recipe__publisher">${recipe.publisher}</span>. Please check out
+  directions at their website.
+</p>
+<a
+  class="btn--small recipe__btn"
+  href="${recipe.source_url}"
+  target="_blank"
+>
+  <span>Directions</span>
+  <svg class="search__icon">
+    <use href="${_icons.default}#icon-arrow-right"></use>
+  </svg>
+</a>
+</div>`;
+  recipeContainer.innerHTML = '';
+  recipeContainer.insertAdjacentHTML('afterbegin', html);
+} //  getrecipe();
+
+
+window.addEventListener('hashchange', getrecipe);
+window.addEventListener('load', getrecipe);
+Search__btn.addEventListener('click', function (e) {
+  e.preventDefault();
+  showRecipe();
+});
+let currentPage;
+let resultPerPage = 10;
+let numPages;
+let recipes;
+
+async function showRecipe() {
+  renderSpinner(results);
+  console.log(search__field.value);
+  const x1 = await fetch(`https://forkify-api.herokuapp.com/api/v2/recipes?search=${search__field.value}`);
+  const data1 = await x1.json();
+  recipes = data1.data.recipes;
+  console.log(recipes);
+  currentPage = 1;
+  renderRecipes(currentPage);
+} //////////
+
+
+function renderRecipes(currentPage) {
+  let start = (currentPage - 1) * resultPerPage;
+  let end = currentPage * resultPerPage;
+  numPages = Math.ceil(recipes.length / resultPerPage);
+  const recipeCurrPage = recipes.slice(start, end);
+  console.log(recipeCurrPage); ///////Render function//////////
+  // renderRecipes(currentPage);
+
+  const html1 = `${recipeCurrPage.map(recipe => {
+    return `<li class="preview">
+    <a class="preview_link preview_link--active" href="#${recipe.id}">
+      <figure class="preview__fig">
+        <img src="${recipe.image_url}" alt="Test" />
+      </figure>
+      <div class="preview__data">
+        <h4 class="preview__title">${recipe.title}</h4>
+        <p class="preview__publisher">${recipe.publisher}</p>
+        <div class="preview__user-generated">
+          <svg>
+            <use href="${_icons.default}#icon-user"></use>
+          </svg>
+        </div>
+      </div>
+    </a>
+   </li>`;
+  }).join("")}`;
+  results.innerHTML = "";
+  results.insertAdjacentHTML("afterbegin", html1); ////render pagination/////////
+
+  const pageHtml = paginationView(currentPage, numPages);
+  pagination.innerHTML = '', pagination.insertAdjacentHTML('afterbegin', pageHtml);
+} /////////////
+
+
+function paginationView(currentPage, numPages) {
+  //// on page 1 with other pages
+  if (currentPage == 1 && numPages > 1) {
+    return `<button  data-cur = ${currentPage + 1} class="btn--inline pagination__btn--next">
+            <span>page ${currentPage + 1}</span>
+            <svg class="search__icon">
+              <use href="${_icons.default}#icon-arrow-right"></use>
+            </svg>
+          </button>`;
+  } /////on last page 
+
+
+  if (numPages == currentPage && numPages > 1) {
+    return `<buttondata-cur = ${currentPage - 1} class="btn--inline pagination__btn--prev">
+    <svg class="search__icon">
+      <use href="${_icons.default}#icon-arrow-left"></use>
+    </svg>
+    <span>Page ${currentPage - 1}</span>
+  </button>`;
+  } ////  on other  pages
+
+
+  if (numPages > 1) {
+    return `<button data-cur = ${currentPage - 1} class="btn--inline pagination__btn--prev">
+    <svg class="search__icon">
+      <use href="${_icons.default}#icon-arrow-left"></use>
+    </svg>
+    <span>Page ${currentPage - 1}</span>
+  </button>
+  
+  <button data-cur = ${currentPage + 1} class="btn--inline pagination__btn--next">
+            <span>Page ${currentPage + 1}</span>
+            <svg class="search__icon">
+              <use href="${_icons.default}#icon-arrow-right"></use>
+            </svg>
+          </button>`;
+  } //// on page 1 and on other page 
+
+
+  return ``;
+} ////////
+
+
+pagination.addEventListener('click', function (e) {
+  const btn = e.target.closest('.btn--inline');
+  renderRecipes(+btn.dataset.cur);
+});
+recipesContainer.addEventListener('click', function (e) {
+  const btn = e.target.closest('.btn--tiny');
+  if (!btn) return;
+  var newServings = +btn.dataset.cur;
+});
